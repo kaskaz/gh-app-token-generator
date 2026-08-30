@@ -7,8 +7,13 @@ hook (`.claude/hooks/gh-app-auth.sh` in the consuming repo) can authenticate
 long-lived token sitting in the session environment's plaintext variables.
 
 Runs on Cloudflare Workers' free tier (100k requests/day, no cold start, no
-server to manage) with zero npm dependencies — it uses `node:crypto` (via the
-`nodejs_compat` flag) for RS256 JWT signing and the platform `fetch`.
+server to manage) with zero npm dependencies — it uses the platform Web
+Crypto API (`crypto.subtle`) for RS256 JWT signing and `fetch`, not
+`node:crypto`: Workers' `node:crypto` compat shim only parses PKCS#8 PEMs,
+and rejects the PKCS#1 PEM (`BEGIN RSA PRIVATE KEY`) GitHub Apps hand out by
+default with `Failed to parse private key`. Web Crypto has the same
+PKCS#8-only restriction, so a PKCS#1 key is converted to PKCS#8 DER in code
+before importing — no manual conversion needed on your end either way.
 
 ## Deploy
 
