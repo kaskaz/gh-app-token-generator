@@ -90,9 +90,21 @@ function signAppJwt(appId, privateKeyPem) {
   const signer = createSign("RSA-SHA256");
   signer.update(unsigned);
   signer.end();
-  const signature = signer.sign(privateKeyPem);
+  const signature = signer.sign(normalizePrivateKey(privateKeyPem));
 
   return `${unsigned}.${base64url(signature)}`;
+}
+
+// `wrangler secret put` is a common source of mangled PEMs: pasting a
+// multi-line key through a shell/heredoc can collapse real newlines into
+// literal `\n` escapes, add CRLF line endings, or leave stray surrounding
+// whitespace, all of which make node:crypto reject the key outright.
+function normalizePrivateKey(pem) {
+  let normalized = pem.trim().replace(/\r\n/g, "\n");
+  if (normalized.includes("\\n") && !normalized.includes("\n")) {
+    normalized = normalized.replace(/\\n/g, "\n");
+  }
+  return normalized;
 }
 
 function base64url(input) {
